@@ -1,0 +1,86 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      routes:
+        - id: customer-service
+          uri: lb://customer-service
+          predicates:
+            - Path=/api/customers/**
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/products/**
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payments/**
+        # Proxied so the aggregated Swagger UI below can fetch every service's
+        # OpenAPI spec through the gateway instead of hitting each port directly.
+        - id: customer-service-docs
+          uri: lb://customer-service
+          predicates:
+            - Path=/docs/customer-service/v3/api-docs
+          filters:
+            - RewritePath=/docs/customer-service/v3/api-docs, /v3/api-docs
+        - id: product-service-docs
+          uri: lb://product-service
+          predicates:
+            - Path=/docs/product-service/v3/api-docs
+          filters:
+            - RewritePath=/docs/product-service/v3/api-docs, /v3/api-docs
+        - id: order-service-docs
+          uri: lb://order-service
+          predicates:
+            - Path=/docs/order-service/v3/api-docs
+          filters:
+            - RewritePath=/docs/order-service/v3/api-docs, /v3/api-docs
+        - id: payment-service-docs
+          uri: lb://payment-service
+          predicates:
+            - Path=/docs/payment-service/v3/api-docs
+          filters:
+            - RewritePath=/docs/payment-service/v3/api-docs, /v3/api-docs
+
+springdoc:
+  swagger-ui:
+    urls:
+      - name: customer-service
+        url: /docs/customer-service/v3/api-docs
+      - name: product-service
+        url: /docs/product-service/v3/api-docs
+      - name: order-service
+        url: /docs/order-service/v3/api-docs
+      - name: payment-service
+        url: /docs/payment-service/v3/api-docs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+security:
+  jwt:
+    # Demo-only secret. In real projects inject this via an environment
+    # variable or a secrets manager - never commit real secrets to source control.
+    secret: "change-this-training-secret-change-this-training-secret"
+    expiration-minutes: 60
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
