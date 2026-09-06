@@ -1,0 +1,208 @@
+{
+  "info": {
+    "_postman_id": "e5d907db-1cc2-48f0-9fc9-oms-training",
+    "name": "Order Management System - Service and Integration Tests",
+    "description": "Import this collection with the companion Order-Management-System.local.postman_environment.json. Run folders top to bottom. The Login request saves the JWT automatically. Seed data is expected to exist unless a request says otherwise.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "customerId", "value": "3" },
+    { "key": "secondCustomerId", "value": "4" },
+    { "key": "productId", "value": "4" },
+    { "key": "secondProductId", "value": "5" },
+    { "key": "orderId", "value": "1" },
+    { "key": "integrationCustomerId", "value": "" },
+    { "key": "integrationProductId", "value": "" },
+    { "key": "integrationOrderId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "00 - Authentication",
+      "description": "Run Login first. It stores the JWT in the active environment.",
+      "item": [
+        {
+          "name": "Login as admin - saves token",
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Login succeeded', function () { pm.response.to.have.status(200); });",
+            "const json = pm.response.json();",
+            "pm.environment.set('token', json.token);",
+            "pm.test('Token was saved', function () { pm.expect(json.token).to.be.a('string').and.not.empty; });"
+          ], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/auth/login", "host": ["{{gatewayUrl}}"], "path": ["api", "auth", "login"] } },
+          "response": []
+        },
+        {
+          "name": "Login with invalid credentials - 401",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Unauthorized', function () { pm.response.to.have.status(401); });"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrong-password\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/auth/login", "host": ["{{gatewayUrl}}"], "path": ["api", "auth", "login"] } },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01 - Customer Service",
+      "description": "Gateway requests require the token saved by Login. Direct requests on port 8081 do not require JWT.",
+      "item": [
+        {
+          "name": "List customers - gateway",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Customer list returned', function () { pm.response.to.have.status(200); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/customers", "host": ["{{gatewayUrl}}"], "path": ["api", "customers"] } }, "response": []
+        },
+        {
+          "name": "Get customer by id",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Customer found', function () { pm.response.to.have.status(200); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/customers/{{customerId}}", "host": ["{{gatewayUrl}}"], "path": ["api", "customers", "{{customerId}}"] } }, "response": []
+        },
+        {
+          "name": "Create customer",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Customer created', function () { pm.response.to.have.status(201); });", "const json = pm.response.json();", "if (json.id) pm.environment.set('createdCustomerId', json.id);"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Customer\",\n  \"email\": \"postman.{{$timestamp}}@example.com\",\n  \"phone\": \"555-0200\",\n  \"address\": \"200 Postman Avenue\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/customers", "host": ["{{gatewayUrl}}"], "path": ["api", "customers"] } }, "response": []
+        },
+        {
+          "name": "Update customer",
+          "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Postman Customer\",\n  \"email\": \"updated.postman.{{$timestamp}}@example.com\",\n  \"phone\": \"555-0201\",\n  \"address\": \"201 Updated Avenue\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/customers/{{customerId}}", "host": ["{{gatewayUrl}}"], "path": ["api", "customers", "{{customerId}}"] } }, "response": []
+        },
+        {
+          "name": "Invalid customer - 400",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Validation rejected', function () { pm.response.to.have.status(400); });"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"\",\n  \"email\": \"not-an-email\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/customers", "host": ["{{gatewayUrl}}"], "path": ["api", "customers"] } }, "response": []
+        },
+        {
+          "name": "Unknown customer - 404",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Customer not found', function () { pm.response.to.have.status(404); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/customers/99999", "host": ["{{gatewayUrl}}"], "path": ["api", "customers", "99999"] } }, "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 - Product Service",
+      "description": "Catalog and stock reservation tests. Seed product 12 is intentionally low stock.",
+      "item": [
+        {
+          "name": "List products - gateway",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Product list returned', function () { pm.response.to.have.status(200); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/products", "host": ["{{gatewayUrl}}"], "path": ["api", "products"] } }, "response": []
+        },
+        {
+          "name": "Get product by id",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Product found', function () { pm.response.to.have.status(200); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/products/{{productId}}", "host": ["{{gatewayUrl}}"], "path": ["api", "products", "{{productId}}"] } }, "response": []
+        },
+        {
+          "name": "Create product",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Product created', function () { pm.response.to.have.status(201); });", "const json = pm.response.json();", "if (json.id) pm.environment.set('createdProductId', json.id);"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Test Product\",\n  \"description\": \"Created from the Postman collection\",\n  \"price\": 29.99,\n  \"stockQuantity\": 25\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/products", "host": ["{{gatewayUrl}}"], "path": ["api", "products"] } }, "response": []
+        },
+        {
+          "name": "Reserve stock - PATCH",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Stock reserved', function () { pm.response.to.have.status(200); });"], "type": "text/javascript" } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"quantity\": 1\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/products/{{productId}}/reserve-stock", "host": ["{{gatewayUrl}}"], "path": ["api", "products", "{{productId}}", "reserve-stock"] } }, "response": []
+        },
+        {
+          "name": "Insufficient stock - 409",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Insufficient stock rejected', function () { pm.response.to.have.status(409); });"], "type": "text/javascript" } }],
+          "request": { "method": "PATCH", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"quantity\": 999\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/products/12/reserve-stock", "host": ["{{gatewayUrl}}"], "path": ["api", "products", "12", "reserve-stock"] } }, "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - Order Service",
+      "description": "Order orchestration tests. Order creation validates customer and product, reserves stock, then publishes Kafka events.",
+      "item": [
+        {
+          "name": "List orders",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Order list returned', function () { pm.response.to.have.status(200); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/orders", "host": ["{{gatewayUrl}}"], "path": ["api", "orders"] } }, "response": []
+        },
+        {
+          "name": "Get order by id",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Order found', function () { pm.response.to.have.status(200); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/orders/{{orderId}}", "host": ["{{gatewayUrl}}"], "path": ["api", "orders", "{{orderId}}"] } }, "response": []
+        },
+        {
+          "name": "List orders by customer",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/orders/customer/{{customerId}}", "host": ["{{gatewayUrl}}"], "path": ["api", "orders", "customer", "{{customerId}}"] } }, "response": []
+        },
+        {
+          "name": "Invalid order - empty items 400",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Invalid order rejected', function () { pm.response.to.have.status(400); });"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"customerId\": {{customerId}},\n  \"items\": []\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/orders", "host": ["{{gatewayUrl}}"], "path": ["api", "orders"] } }, "response": []
+        },
+        {
+          "name": "Unknown customer order - 503/404",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"customerId\": 99999,\n  \"items\": [{ \"productId\": {{productId}}, \"quantity\": 1 }]\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/orders", "host": ["{{gatewayUrl}}"], "path": ["api", "orders"] } }, "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - Payment Service",
+      "description": "Read-only payment ledger. Payments are created by Kafka after POST /api/orders.",
+      "item": [
+        {
+          "name": "List payments - gateway",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Payment list returned', function () { pm.response.to.have.status(200); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/payments", "host": ["{{gatewayUrl}}"], "path": ["api", "payments"] } }, "response": []
+        },
+        {
+          "name": "List payments - direct service",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{paymentUrl}}/api/payments", "host": ["{{paymentUrl}}"], "path": ["api", "payments"] } }, "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 - Notification Service",
+      "description": "Notification service is not configured as an API Gateway route. Call its port directly.",
+      "item": [
+        {
+          "name": "List notifications - direct service",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Notifications returned', function () { pm.response.to.have.status(200); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{notificationUrl}}/api/notifications", "host": ["{{notificationUrl}}"], "path": ["api", "notifications"] } }, "response": []
+        },
+        {
+          "name": "Notification health",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{notificationUrl}}/actuator/health", "host": ["{{notificationUrl}}"], "path": ["actuator", "health"] } }, "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 - End-to-End Integration Saga",
+      "description": "Run in order. This creates fresh IDs and verifies customer -> product -> order -> payment -> notification. Wait 3-5 seconds before polling the order.",
+      "item": [
+        {
+          "name": "1. Create integration customer",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Integration customer created', function () { pm.response.to.have.status(201); });", "pm.environment.set('integrationCustomerId', pm.response.json().id);"] , "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Integration Flow Customer\",\n  \"email\": \"integration.{{$timestamp}}@example.com\",\n  \"phone\": \"555-0300\",\n  \"address\": \"300 Integration Lane\"\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/customers", "host": ["{{gatewayUrl}}"], "path": ["api", "customers"] } }, "response": []
+        },
+        {
+          "name": "2. Create integration product under $1000",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Integration product created', function () { pm.response.to.have.status(201); });", "pm.environment.set('integrationProductId', pm.response.json().id);"] , "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Integration Saga Product\",\n  \"description\": \"Product for the approved payment path\",\n  \"price\": 49.99,\n  \"stockQuantity\": 10\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/products", "host": ["{{gatewayUrl}}"], "path": ["api", "products"] } }, "response": []
+        },
+        {
+          "name": "3. Create integration order",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Integration order accepted', function () { pm.response.to.have.status(201); });", "pm.environment.set('integrationOrderId', pm.response.json().id);", "pm.test('Initial status is CREATED', function () { pm.expect(pm.response.json().status).to.eql('CREATED'); });"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"customerId\": {{integrationCustomerId}},\n  \"items\": [{\n    \"productId\": {{integrationProductId}},\n    \"quantity\": 1\n  }]\n}", "options": { "raw": { "language": "json" } } }, "url": { "raw": "{{gatewayUrl}}/api/orders", "host": ["{{gatewayUrl}}"], "path": ["api", "orders"] } }, "response": []
+        },
+        {
+          "name": "4. Poll integration order - expect PAID",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Saga reached PAID', function () { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('PAID'); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/orders/{{integrationOrderId}}", "host": ["{{gatewayUrl}}"], "path": ["api", "orders", "{{integrationOrderId}}"] } }, "response": []
+        },
+        {
+          "name": "5. Verify integration payment",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Payment exists for integration order', function () { const rows = pm.response.json(); const found = rows.find(p => String(p.orderId) === String(pm.environment.get('integrationOrderId'))); pm.expect(found).to.exist; pm.expect(found.status).to.eql('APPROVED'); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{gatewayUrl}}/api/payments", "host": ["{{gatewayUrl}}"], "path": ["api", "payments"] } }, "response": []
+        },
+        {
+          "name": "6. Verify integration notification",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Payment notification exists', function () { const rows = pm.response.json(); const id = String(pm.environment.get('integrationOrderId')); const found = rows.find(n => String(n.orderId) === id && n.message.includes('Payment confirmed')); pm.expect(found).to.exist; });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{notificationUrl}}/api/notifications", "host": ["{{notificationUrl}}"], "path": ["api", "notifications"] } }, "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -18,6 +18,9 @@ pseudo-code — clone it, run it, break it, fix it.
 
 Start at [docs/00-course-overview.md](docs/00-course-overview.md).
 
+For one continuous beginner-to-production walkthrough, use the
+[End-to-End Microservices Tutorial](docs/end-to-end-microservices-tutorial.md).
+
 ## The reference system
 
 ```mermaid

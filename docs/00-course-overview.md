@@ -68,3 +68,7 @@ order-management-system/
 ```
 
 Continue to [Beginner Lesson 01](beginner/01-spring-boot-fundamentals.md).
+
+For a single end-to-end explanation that connects the requirements, design,
+data model, code layers, service wiring, Kafka, Swagger, testing, Docker, and
+Kubernetes, see the [End-to-End Microservices Tutorial](end-to-end-microservices-tutorial.md).
